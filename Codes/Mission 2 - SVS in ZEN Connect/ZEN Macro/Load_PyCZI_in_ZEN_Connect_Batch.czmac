@@ -1,0 +1,136 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Script>
+  <Context>Zen26</Context>
+  <Version>1.0</Version>
+  <Language>Python</Language>
+  <Text>#############################################################################################
+## L O A D   S V S   I M A G E S    I N    Z E N  C O N N E C T 
+##
+## Macro name: Load_PyCZI_in_ZEN_Connect.czmac
+## 
+## Convert SVS to CZI using Zeiss Proprietary Python Library and load it into ZEN Connect
+##
+## Authors: Solutions Lab Team, APAC
+##
+## Copyright (c) 2021 by Carl Zeiss Microscopy GmbH.
+## Permission is granted to use, modify and distribute this code,
+## as long as this copyright notice remains part of the code.
+##############################################################################################
+##
+##
+
+## Clear the macro editor console output
+Zen.Application.MacroEditor.ClearMessages()
+
+## Import all required libraries
+import sys
+import os
+import time
+from System.Diagnostics import Process
+from System.IO import Directory, Path, File
+from time import gmtime, strftime
+from System import ApplicationException
+from System.IO import File, Directory, Path, FileInfo
+import shutil
+
+## Remove all open documents
+Zen.Application.Documents.RemoveAll()
+
+## User-defined function to create a folder
+def create_directory(createFolder):
+    ## check directory exists or not and create a new one
+    
+    if os.path.exists(createFolder):
+        shutil.rmtree(createFolder)
+        os.mkdir(createFolder)
+        print("Folder exists")
+    else:
+        os.mkdir(createFolder)
+        print("Destination Folder Created")
+##
+create_directory(r'C:\temp\SVS_to_CZI_Python')
+
+## GUI to select the folder of SVS images
+GUIDialog = ZenWindow()
+GUIDialog.Initialize('Select the folder with SVS images')
+GUIDialog.AddFolderBrowser('SVSfolder', 'Select SVS image folder to be opened in ZEN Connect',r'C:\temp\IPM_SYSU_Demo\SVS_Images' )
+GUIresult = GUIDialog.Show()
+SVSfolder = str(GUIresult.GetValue('SVSfolder'))
+
+## get files in the batch mode
+files = Directory.GetFiles(SVSfolder)
+print(files)
+
+#create_directory
+
+## Use Qupath and ImageJ to convert SVS to ZEN compatible OMETIFF and save as CZI
+Zen.Application.ProgressInfo.Show("Converting SVS to CZI format \nfor loading into ZEN software")
+time.sleep(10)
+
+## Batch operation 
+for i in range(0,files.Length):
+    file = files[i]
+    fileInfo = FileInfo(file)
+    image_basename_noext = os.path.splitext(fileInfo.Name)[0]
+    folder_name = os.path.basename(os.path.dirname(file))
+    PathAndFile = Path.Combine(SVSfolder, fileInfo.Name)
+    #image = Zen.Application.LoadImage(PathAndFile,False)
+    
+    Zen.Application.ProgressInfo.Show('Converting ' + image_basename_noext + '.SVS to  CZI file format')
+    
+    python_exe_location=r"C:\OAD\IPM_SYSU_2\Python_Exe\Convert_SVS_to_CZI\Convert_SVS_to_CZI.exe"
+    #python_exe_location=r"C:\Users\ZSPANIYA\AppData\Local\Programs\Python\Python38\pythonw.exe"
+    #script_location=r"C:\OAD\IPM_SYSU_2\Python_Script\Convert_SVS_to_CZI.pyw"
+    params = ' -f ' + PathAndFile 
+    print(params)
+    
+    app = Process()
+    app.StartInfo.FileName = python_exe_location
+    app.StartInfo.Arguments = params
+    app.Start()
+    time.sleep(10)
+    print "Process Started"
+    app.WaitForExit()
+    print "Process Exited"
+    app.Close()
+
+    Zen.Application.ProgressInfo.Close()
+
+    czi_image_path = r"C:\temp\sample.czi"
+    czi_image = Zen.Application.LoadImage(czi_image_path)
+    Zen.Application.Save(czi_image, "C:\\temp\\SVS_to_CZI_Python\\" +image_basename_noext+".czi", False)
+    Zen.Application.Documents.Add(czi_image)
+    
+    ## ********************Load the converted SVS image into ZEN Connect******************** ##
+Zen.Application.ProgressInfo.Show("Loading Image to ZEN Connect")
+
+
+
+## ********************************** Load into ZenConnect ************************************* ##
+version = 0.1
+
+targetprojectfolder = r'C:\temp\SVS_to_CZI_Python'
+
+# create CWS project name based on date
+projectname = strftime('ZEN_Connect_%Y-%m-%d_%H-%M', gmtime())
+print('Created new project name: ', projectname)
+
+# Create the project in the folder below 
+ZenConnectDocument = ZenConnect.CreateZenConnectDocument(targetprojectfolder+'//'+projectname + '.a5proj')
+cwspath = targetprojectfolder
+cwsdata_path = Path.Combine(cwspath, projectname + '_data')
+
+ZenConnectDocument.AddImagesInFolderToZenConnectDocument(targetprojectfolder)
+
+time.sleep(100)
+Zen.Application.ProgressInfo.Close()
+
+##
+##############################################################################################
+</Text>
+  <Author></Author>
+  <Description></Description>
+  <Keywords></Keywords>
+  <Row>71</Row>
+  <Column>57</Column>
+</Script>
